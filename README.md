@@ -67,12 +67,6 @@ So users can easily share their looks online.
 ### Error Handling
 All tools are built to handle failures gracefully (e.g., empty wardrobe, no matches, or tight budget) and return helpful messages instead of breaking.
 
-## Error Handling & Resilience
-
-FitFindr is designed to fail gracefully. Instead of crashing, it detects issues and either guides the user or provides a fallback response.
-
----
-
 ## Tool Failure Handling
 
 | Tool            | Failure Mode              | Agent Response |
