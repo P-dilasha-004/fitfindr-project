@@ -43,8 +43,77 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
            string and return it along with session["outfit_suggestion"] and
            session["fit_card"].
     """
-    # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
+    # Step 1: reject blank input before touching the agent
+    if not user_query or not user_query.strip():
+        return "Please enter a search query before submitting.", "", ""
+
+    # Step 2: resolve wardrobe from the radio button selection
+    wardrobe = (
+        get_example_wardrobe()
+        if wardrobe_choice == "Example wardrobe"
+        else get_empty_wardrobe()
+    )
+
+    # Step 3: run the planning loop
+    session = run_agent(query=user_query.strip(), wardrobe=wardrobe)
+
+    # Step 4: surface Tool 1 failures (no matching listings) in the first panel
+    if session["error"]:
+        return session["error"], "", ""
+
+    # Step 5: format the three output panels
+    item = session["selected_item"]
+
+    # Panel 1 — structured listing summary
+    price = item.get("price")
+    price_str = f"${price:.2f}" if isinstance(price, (int, float)) else "Price unknown"
+    brand = item.get("brand") or "Unknown brand"
+    colors = ", ".join(item.get("colors", [])) or "—"
+    tags = ", ".join(item.get("style_tags", [])) or "—"
+
+    listing_text = (
+        f"{item.get('title', 'Listing')}\n"
+        f"\n"
+        f"Price:     {price_str}\n"
+        f"Size:      {item.get('size', '—')}\n"
+        f"Condition: {item.get('condition', '—')}\n"
+        f"Brand:     {brand}\n"
+        f"Colors:    {colors}\n"
+        f"Tags:      {tags}\n"
+        f"Platform:  {item.get('platform', '—')}\n"
+        f"\n"
+        f"{item.get('description', '')}"
+    )
+
+    # Panel 2 — outfit suggestion (str from Case 1, or list[dict] from Case 2)
+    outfit_raw = session["outfit_suggestion"]
+    if isinstance(outfit_raw, list):
+        # Format the selected wardrobe items as a readable list
+        lines = []
+        for piece in outfit_raw:
+            colors_str = ", ".join(piece.get("colors", []))
+            line = f"• {piece.get('name', 'item')}"
+            if colors_str:
+                line += f"  ({colors_str})"
+            notes = piece.get("notes")
+            if notes:
+                line += f"\n  {notes}"
+            lines.append(line)
+        outfit_text = "\n\n".join(lines)
+    else:
+        # Case 1: suggest_outfit returned a conversational styling advice string
+        outfit_text = outfit_raw or ""
+
+    # Panel 3 — fit card caption + hashtags (always a dict from create_fit_card)
+    fit_card_raw = session["fit_card"]
+    if isinstance(fit_card_raw, dict):
+        caption = fit_card_raw.get("caption", "")
+        hashtags = "  ".join(fit_card_raw.get("hashtags", []))
+        fit_card_text = f"{caption}\n\n{hashtags}" if hashtags else caption
+    else:
+        fit_card_text = str(fit_card_raw) if fit_card_raw else ""
+
+    return listing_text, outfit_text, fit_card_text
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
